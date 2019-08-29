@@ -36,63 +36,72 @@ Fellow students have put together a guide to Windows set-up for the project [her
 4. Run it: `./pid`. 
 
 Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+## Overview
+This project goes over the basics of the PID controller and implementing such control system in a simulation environment.   
+The PID controller is composed of three main gains:
+1. Proportional Gain
+2. Integral Gain
+3. Derivative Gain
+As the name suggests, these gains are applied to the error to come up with a viable steering angle to keep the vehicle in the lane.
+### Cross Track Error
+The cross track error was the error associated with the deviation from the trajectory of the lane. In this project, the trajectory would have been the center of the lane.
+### The Gains
+The individual gains (P, I, D) are applied to a form of the error.
+* P Gain: The pgain sets the steering angle proportional factor to CTE with the P gain.
+``` c++
+- Kp * cte
+```
+* I Gain: The igain sets the steering angle with the errors accumulated throughout the whole run. This igain is used to counteract the bias that might prevent the vehicle from centering.
+``` c++
+int_cte += cte
+- Ki * int_cte;
+```
+* D Gain: The dgain sets the steering angle with the difference in error from timestep t and t-1. This dgain is used to counter the overshooting that might occur as a result of the pgain.
+``` c++
+diff_cte = cte - prev_cte
+- Kd * diff_cte
+```
+### Steer Output
+The output of the sum of these values above constitutes the steering angle that drives the vehicle.   
+``` c++ 
+steer_angle = -Kp * cte - Ki * int_cte - Kd * diff_cte
+```
 
-## Editor Settings
+## Tuning
+Tuning of the PID controller was very tedious as there with three parameters pgain, igain, and dgain to tune. However, using the Twiddle formula introduced by Sebastian in the Udacity course, I was able to automate finding valid values of the gain to allow the vehicle to follow the lane.
+``` c++
+function(tol=0.2) {
+    p = [0, 0, 0]
+    dp = [1, 1, 1]
+    best_error = move_robot()
+    loop untill sum(dp) > tol
+        loop until the length of p using i
+            p[i] += dp[i]
+            error = move_robot()
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+            if err < best_err
+                best_err = err
+                dp[i] *= 1.1
+            else
+                p[i] -= 2 * dp[i]
+                error = move_robot()
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+                if err < best_err
+                    best_err = err
+                    dp[i] *= 1.1
+                else
+                    p[i] += dp[i]
+                    dp[i] *= 0.9
+    return p
+}
+```
+### Tuning methodology
+Because running twiddle algorithm for every run of the track takes a long time, I divided the tuning into two parts.   
+1. Tune for the first ~5 seconds of the track resetting the simulation after each iteration.
+* This allowed me to see which values P, I, D had the most effect on the system
+* Allowed me to see factor of dP, dI, dD (ex: P values can be set +- 0.01 where as I was much more senstive with +- 0.00001)
+2. Tune for the next 30 seconds of the track resetting the simulation after each iteration.
 
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
-
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+## Final Thoughts
+The project gave a very good overview to tuning a PID controller. The automation process made it much easier to see the effects of the individual tuning parameters.   
+Though the vehicle is able to go around the track, if given the time, I would like to fine tune this so that it is much smoother.
